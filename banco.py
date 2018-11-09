@@ -32,3 +32,6 @@ class Banco(object):
                 return True
         except:
             return False
+    
+    def retornaBd(self):
+        return self.mapa

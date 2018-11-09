@@ -7,13 +7,14 @@ import servicos_pb2
 import servicos_pb2_grpc
 import fila
 import config
+from colorama import init
+init()
 
 class Client:
     def __init__(self):
         self.configuracao = config.Config()
         self.host = self.configuracao.getHost().strip("\n")
-        self.filaRespostas = fila.Fila()
-        
+
     def main(self):
         try:
             porta = input("Porta do Servidor: ")
@@ -57,9 +58,9 @@ class Client:
             ativo = False
 
     def validar_temp(self,entrada):
-        msg = entrada.split(' ',2)  
+        msg = entrada.split(' ',2)
         try:
-            if int(msg[0]) >= 1 and int(msg[0]) <= 5 and isinstance(int(msg[1]),int):          
+            if int(msg[0]) >= 1 and int(msg[0]) <= 5 and isinstance(int(msg[1]),int):
                 return True
             else:
                 return False
@@ -69,9 +70,11 @@ class Client:
     def resposta(self,retorno):
         res = retorno.result()
         if res.resposta is not None:
-            print(res.resposta)
+            if res.resposta == 'NOK' or res.resposta == 'Chave não existe!':
+                print('\033[31m'+res.resposta+'\033[37m' )
+            else:
+                print('\033[32m'+res.resposta+'\033[37m' )
 
-       
 if __name__ == '__main__':
     client = Client()
     client.main()

@@ -10,8 +10,10 @@ import os
 import random
 import sys
 import config
+from colorama import init
+init()
 
-_ONE_DAY_IN_SECONDS = 60 * 60 * 24
+TIMEOUT = 60 * 60 * 24
 
 class Server(servicos_pb2_grpc.RequisicaoServicer):
     def __init__(self, bits, srv, cAnt, cAtu, cSuc, pAnt, pAtu, pSuc, tsnap):
@@ -37,33 +39,33 @@ class Server(servicos_pb2_grpc.RequisicaoServicer):
         self.visitado = False
 
     def Conectado(self, request, context):
-        print(request.chave)
+        print(request.chave + " conectado")
         return servicos_pb2.Resultado(resposta="Conectado ao Servidor: "+str(self.cAtu))
 
     def Create(self,request,context):
         requisicao = "1 " + request.chave + " " + request.valor
         msg = self.trata_resp(requisicao)
-        print("passou por aqui")
+        print("procurando...")
         return servicos_pb2.Resultado(resposta=msg)
 
     def Read(self, request, context):
         requisicao = "2 " + request.chave
         msg = self.trata_resp(requisicao)
-        print("passou por aqui")
+        print("procurando...")
         return servicos_pb2.Resultado(resposta=msg)
 
     def Update(self, request, context):
         requisicao = "3 " + request.chave + " " + request.valor
         msg = self.trata_resp(requisicao)
-        print("passou por aqui")
+        print("procurando...")
         return servicos_pb2.Resultado(resposta=msg)
 
     def Delete(self, request, context):
         requisicao = "4 " + request.chave
         msg = self.trata_resp(requisicao)
-        print("passou por aqui")
+        print("procurando...")
         return servicos_pb2.Resultado(resposta=msg)
-   
+ 
     def main(self):
         self.imprime_infos()
         server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
@@ -76,14 +78,14 @@ class Server(servicos_pb2_grpc.RequisicaoServicer):
         self.stubSuc = servicos_pb2_grpc.RequisicaoStub(self.channel)
         try:
             while True:
-                time.sleep(_ONE_DAY_IN_SECONDS)
+                time.sleep(TIMEOUT)
         except KeyboardInterrupt:
             pass
-            server.stop(0)
+            server.stop(5)
 
     def imprime_infos(self):
-        print("\tAnte.\tServ.\tSuce. \nId:\t" + str(self.cAnt)+"\t"+str(self.cAtu)+"\t"+str(self.cSuc))
-        print("Port:\t"+ str(self.pAnt)+"\t"+str(self.pAtu)+"\t"+str(self.pSuc)+"\n")
+        print('\033[37m'+"\tAnte.\tServ.\tSuce. \nId:\t" + str(self.cAnt)+"\t"+'\033[32m' + str(self.cAtu)+"\t"+'\033[37m'+str(self.cSuc))
+        print("Porta:\t"+ str(self.pAnt)+"\t"+'\033[32m' +str(self.pAtu)+"\t"+'\033[37m'+str(self.pSuc)+"\n")
         if self.cAnt < self.cAtu:
             for i in range(0, self.cAnt):
                 if i==0:
@@ -103,6 +105,7 @@ class Server(servicos_pb2_grpc.RequisicaoServicer):
             cm = cm.split(' ',2)
             key = int(cm[1])
             if key in self.chaves:
+                print("encontrou..")
                 self.f1.insere(requisicao)
                 while self.fresp.vazia():
                     pass
@@ -117,6 +120,9 @@ class Server(servicos_pb2_grpc.RequisicaoServicer):
             msg = "Chave não existe!"
             self.visitado = False
         return msg
+
+    def retorna_banco(self, id):
+        pass
 
     def retransmite(self, requisicao):
         #req = self.f4.retira()
@@ -152,12 +158,19 @@ class Server(servicos_pb2_grpc.RequisicaoServicer):
                     self.f3.insere(comando)
                 except:
                     pass
-    
-    def log_thread(self): 
+
+    def log_thread(self):
         while True:
             while not self.f2.vazia():
-                pass #
-        
+                try:
+                    requisicao = str(self.f2.retira())
+                    cm = requisicao.split(' ',2)
+                    if int(cm[0]) != 2:
+                        #salva_log()
+                        pass
+                except:
+                    pass
+
     def banco_thread(self):
         while True:
             while not self.f3.vazia():
@@ -166,20 +179,20 @@ class Server(servicos_pb2_grpc.RequisicaoServicer):
                     cm = str(cm)
                     cm = cm.split(' ',2)
                     ok = False
-                    if int(cm[0]) == 1 :
+                    if cm[0] == '1' :
                         if self.bd.create(int(cm[1]),cm[2]):
                             ok = True
                             msg = "OK"
-                    elif int(cm[0]) == 2 :
+                    elif cm[0] == '2' :
                             read = self.bd.read(int(cm[1]))
                             if read:
                                 msg = "Chave:" + str(cm[1]) +" Valor: " + read
                                 ok = True
-                    elif int(cm[0]) == 3 :
+                    elif cm[0] == '3' :
                         if self.bd.update(int(cm[1]),cm[2]):
                             msg = "OK"
                             ok = True
-                    elif int(cm[0]) == 4 :
+                    elif cm[0] == '4' :
                         if self.bd.delete(int(cm[1])):
                             msg = "OK"
                             ok = True
@@ -197,13 +210,13 @@ class Server(servicos_pb2_grpc.RequisicaoServicer):
         log = threading.Thread(target=self.log_thread, name="log",args=())
         log.setDaemon(True)
         log.start()
-        
+
         banco = threading.Thread(target=self.banco_thread, name="banco",args=())
         banco.setDaemon(True)                
         banco.start()
-        
+
         self.main()
-        
+
 def run_server():
     bits = int(sys.argv[1])
     srv = int(sys.argv[2])
