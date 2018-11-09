@@ -10,6 +10,7 @@ import os
 import random
 import sys
 import config
+import log
 from colorama import init
 init()
 
@@ -34,6 +35,7 @@ class Server(servicos_pb2_grpc.RequisicaoServicer):
         self.f4 = fila.Fila()
         self.fresp = fila.Fila()
         self.bd = banco.Banco()
+        self.log = log.Log(self.time_snap, self.cAtu)
         self.cfg = config.Config()
         self.host = self.cfg.getHost().strip("\n")
         self.visitado = False
@@ -68,6 +70,7 @@ class Server(servicos_pb2_grpc.RequisicaoServicer):
  
     def main(self):
         self.imprime_infos()
+        self.log.start()
         server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
         servicos_pb2_grpc.add_RequisicaoServicer_to_server(self, server)
         server.add_insecure_port(self.host+':'+str(self.pAtu))
@@ -166,7 +169,7 @@ class Server(servicos_pb2_grpc.RequisicaoServicer):
                     requisicao = str(self.f2.retira())
                     cm = requisicao.split(' ',2)
                     if int(cm[0]) != 2:
-                        #salva_log()
+                        self.log.escreve(self.cAtu, requisicao)
                         pass
                 except:
                     pass
