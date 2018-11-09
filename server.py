@@ -110,7 +110,6 @@ class Server(servicos_pb2_grpc.RequisicaoServicer):
                 while self.fresp.vazia():
                     pass
                 msg = self.fresp.retira()
-                #msg = str(self.cAtu)
                 self.visitado = False
             else:
                 retorno = self.retransmite(requisicao)
@@ -122,7 +121,8 @@ class Server(servicos_pb2_grpc.RequisicaoServicer):
         return msg
 
     def retorna_banco(self, id):
-        pass
+        if id == self.cAtu:
+            return self.bd
 
     def retransmite(self, requisicao):
         #req = self.f4.retira()
