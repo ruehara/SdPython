@@ -39,6 +39,7 @@ class Server(servicos_pb2_grpc.RequisicaoServicer):
         self.cfg = config.Config()
         self.host = self.cfg.getHost().strip("\n")
         self.visitado = False
+        self.versao_snap = 0
 
     def Conectado(self, request, context):
         print(request.chave + " conectado")
@@ -70,7 +71,10 @@ class Server(servicos_pb2_grpc.RequisicaoServicer):
  
     def main(self):
         self.imprime_infos()
-        self.log.start()
+        self.versao_snap = self.log.inicia()
+        if self.versao_snap > 0:
+            self.bd = self.log.recupera(self.cAtu) # recupera estado anterior  
+        print(self.bd.mapa)
         server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
         servicos_pb2_grpc.add_RequisicaoServicer_to_server(self, server)
         server.add_insecure_port(self.host+':'+str(self.pAtu))
@@ -123,7 +127,6 @@ class Server(servicos_pb2_grpc.RequisicaoServicer):
             self.visitado = False
         return msg
 
-    def retorna_banco(self, id):
         if id == self.cAtu:
             return self.bd
 
@@ -169,10 +172,15 @@ class Server(servicos_pb2_grpc.RequisicaoServicer):
                     requisicao = str(self.f2.retira())
                     cm = requisicao.split(' ',2)
                     if int(cm[0]) != 2:
-                        self.log.escreve(self.cAtu, requisicao)
-                        pass
+                        self.log.escreve_log(self.cAtu, requisicao)
                 except:
                     pass
+                    
+    def snap_thread(self):
+        while True:
+            time.sleep(self.time_snap)
+            self.versao_snap = self.versao_snap + 1
+            self.log.escreve_snapshot(self.bd, self.versao_snap)
 
     def banco_thread(self):
         while True:
@@ -206,6 +214,10 @@ class Server(servicos_pb2_grpc.RequisicaoServicer):
                     pass
 
     def run(self):
+        snap = threading.Thread(target=self.snap_thread, name="snap",args=())
+        snap.setDaemon(True)
+        snap.start()
+
         duplica = threading.Thread(target=self.duplica_thread, name="duplica",args=())
         duplica.setDaemon(True)
         duplica.start()

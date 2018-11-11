@@ -4,7 +4,7 @@ class Banco(object):
         
     def create(self, chave, valor):
         try:
-            if(self.mapa[chave] is not None):
+            if self.mapa[chave] is not None:
                 return False
         except:
             self.mapa[chave] = valor
